@@ -10,12 +10,3 @@
 resources:
 - serving.kserve.io_inferenceservices.yaml
 - serving.kserve.io_trainedmodels.yaml
-
-patchesJson6902:
-  # Fix for https://github.com/kubernetes/kubernetes/issues/91395
-  - target:
-      group: apiextensions.k8s.io
-      version: v1beta1
-      kind: CustomResourceDefinition
-      name: inferenceservices.serving.kserve.io
-    path: patches/protocol.yaml
