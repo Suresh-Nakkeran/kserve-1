@@ -1,0 +1,7 @@
+resources:
+  - mlserver-0.x.yaml
+
+images:
+  - name: mlserver-0
+    newName: seldonio/mlserver
+    newTag: 0.3.2

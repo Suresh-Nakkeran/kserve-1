@@ -104,7 +104,7 @@ func (r *InferenceServiceReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	deploymentMode := isvcutils.GetDeploymentMode(annotations, deployConfig)
 
-	if  deploymentMode == constants.ModelMeshDeployment {
+	if deploymentMode == constants.ModelMeshDeployment {
 		r.Log.Info("Skipping reconciliation for InferenceService", constants.DeploymentMode, deploymentMode,
 			"apiVersion", isvc.APIVersion, "isvc", isvc.Name)
 		return ctrl.Result{}, nil

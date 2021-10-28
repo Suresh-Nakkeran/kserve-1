@@ -31,7 +31,6 @@ patchesStrategicMerge:
 - webhookcainjection_patch.yaml
 - manager_resources_patch.yaml
 - inferenceservice_conversion_webhook.yaml
-- cainjection_conversion_webhook.yaml
 
 generatorOptions:
   disableNameSuffixHash: true

@@ -4850,6 +4850,13 @@ spec:
                       type: integer
                     minReplicas:
                       type: integer
+                    modelType:
+                      properties:
+                        name:
+                          type: string
+                        version:
+                          type: string
+                      type: object
                     nodeName:
                       type: string
                     nodeSelector:

@@ -31,6 +31,10 @@ type PredictorImplementation interface {
 // PredictorSpec defines the configuration for a predictor,
 // The following fields follow a "1-of" semantic. Users must specify exactly one spec.
 type PredictorSpec struct {
+	// Model formats and version supported by runtime
+	// +optional
+	ModelType *ModelType `json:"modelType,omitempty"`
+
 	// Spec for SKLearn model server
 	SKLearn *SKLearnSpec `json:"sklearn,omitempty"`
 	// Spec for XGBoost model server

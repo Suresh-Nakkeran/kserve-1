@@ -13,6 +13,8 @@ limitations under the License.
 package components
 
 import (
+	"context"
+
 	"github.com/go-logr/logr"
 	"github.com/kserve/kserve/pkg/constants"
 	"github.com/kserve/kserve/pkg/controller/v1beta1/inferenceservice/reconcilers/knative"
@@ -77,7 +79,25 @@ func (p *Predictor) Reconcile(isvc *v1beta1.InferenceService) error {
 		}),
 		Annotations: annotations,
 	}
+
 	container := predictor.GetContainer(isvc.ObjectMeta, isvc.Spec.Predictor.GetExtensions(), p.inferenceServiceConfig)
+	p.Log.Info("Checking ModelType")
+	if isvc.Spec.Predictor.ModelType != nil {
+		p.Log.Info("Found a ModelType", "ModelType", isvc.Spec.Predictor.ModelType)
+		var clusterServingRuntimes v1beta1.ClusterServingRuntimeList
+		if err := p.client.List(context.TODO(), &clusterServingRuntimes, client.InNamespace("kserve")); err != nil {
+			return err
+		}
+		for _, vv := range clusterServingRuntimes.Items {
+			for _, modelType := range vv.Spec.SupportedModelTypes {
+				if modelType.Name == isvc.Spec.Predictor.ModelType.Name {
+					p.Log.Info("Found a Matching Serving Runtime", "ClusterServingRuntime", vv)
+					// container.Resources = vv.Spec.Containers[0].Resources
+					break
+				}
+			}
+		}
+	}
 	if len(isvc.Spec.Predictor.PodSpec.Containers) == 0 {
 		isvc.Spec.Predictor.PodSpec.Containers = []v1.Container{
 			*container,

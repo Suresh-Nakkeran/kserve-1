@@ -9,6 +9,7 @@
 # markers ("---").
 resources:
 - serving.kserve.io_inferenceservices.yaml
+- serving.kserve.io_clusterservingruntimes.yaml
 - serving.kserve.io_trainedmodels.yaml
 
 patchesJson6902:
