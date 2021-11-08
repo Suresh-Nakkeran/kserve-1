@@ -59,11 +59,14 @@ func (isvc *InferenceService) ValidateCreate() error {
 	if err := validateAutoscalerTargetUtilizationPercentage(isvc); err != nil {
 		return err
 	}
-	for _, component := range []Component{
-		&isvc.Spec.Predictor,
+	components := []Component{
 		isvc.Spec.Transformer,
 		isvc.Spec.Explainer,
-	} {
+	}
+	if isvc.Spec.Predictor.ModelType == nil {
+		components = append(components, &isvc.Spec.Predictor)
+	}
+	for _, component := range components {
 		if !reflect.ValueOf(component).IsNil() {
 			if err := validateExactlyOneImplementation(component); err != nil {
 				return err

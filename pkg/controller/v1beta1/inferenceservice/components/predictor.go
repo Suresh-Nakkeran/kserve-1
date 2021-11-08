@@ -56,13 +56,43 @@ func NewPredictor(client client.Client, scheme *runtime.Scheme, inferenceService
 
 // Reconcile observes the predictor and attempts to drive the status towards the desired state.
 func (p *Predictor) Reconcile(isvc *v1beta1.InferenceService) error {
-	predictor := isvc.Spec.Predictor.GetImplementation()
+	container := &v1.Container{}
+	var sourceURI *string
 	annotations := utils.Filter(isvc.Annotations, func(key string) bool {
 		return !utils.Includes(constants.ServiceAnnotationDisallowedList, key)
 	})
+	// Check model type
+	p.Log.Info("Checking ModelType")
+	if isvc.Spec.Predictor.ModelType == nil {
+		predictor := isvc.Spec.Predictor.GetImplementation()
+		sourceURI = predictor.GetStorageUri()
+		container = predictor.GetContainer(isvc.ObjectMeta, isvc.Spec.Predictor.GetExtensions(), p.inferenceServiceConfig)
+	} else {
+		p.Log.Info("Found a ModelType", "ModelType", isvc.Spec.Predictor.ModelType)
+		var clusterServingRuntimes v1beta1.ClusterServingRuntimeList
+		if err := p.client.List(context.TODO(), &clusterServingRuntimes, client.InNamespace(constants.KServeNamespace)); err != nil {
+			return err
+		}
+		p.Log.Info("Get ClusterServingRuntimes", "ClusterServingRuntimes", clusterServingRuntimes)
+		hasMatch := false
+		for _, vv := range clusterServingRuntimes.Items {
+			for _, modelType := range vv.Spec.SupportedModelTypes {
+				if modelType.Name == isvc.Spec.Predictor.ModelType.Name {
+					p.Log.Info("Found a Matching Serving Runtime", "ClusterServingRuntime", vv)
+					container = &vv.Spec.Container
+					sourceURI = vv.Spec.StorageURI
+					hasMatch = true
+					break
+				}
+			}
+			if hasMatch {
+				break
+			}
+		}
+	}
 	// KNative does not support INIT containers or mounting, so we add annotations that trigger the
 	// StorageInitializer injector to mutate the underlying deployment to provision model data
-	if sourceURI := predictor.GetStorageUri(); sourceURI != nil {
+	if sourceURI != nil {
 		annotations[constants.StorageInitializerSourceUriInternalAnnotationKey] = *sourceURI
 	}
 	hasInferenceLogging := addLoggerAnnotations(isvc.Spec.Predictor.Logger, annotations)
@@ -80,24 +110,7 @@ func (p *Predictor) Reconcile(isvc *v1beta1.InferenceService) error {
 		Annotations: annotations,
 	}
 
-	container := predictor.GetContainer(isvc.ObjectMeta, isvc.Spec.Predictor.GetExtensions(), p.inferenceServiceConfig)
-	p.Log.Info("Checking ModelType")
-	if isvc.Spec.Predictor.ModelType != nil {
-		p.Log.Info("Found a ModelType", "ModelType", isvc.Spec.Predictor.ModelType)
-		var clusterServingRuntimes v1beta1.ClusterServingRuntimeList
-		if err := p.client.List(context.TODO(), &clusterServingRuntimes, client.InNamespace("kserve")); err != nil {
-			return err
-		}
-		for _, vv := range clusterServingRuntimes.Items {
-			for _, modelType := range vv.Spec.SupportedModelTypes {
-				if modelType.Name == isvc.Spec.Predictor.ModelType.Name {
-					p.Log.Info("Found a Matching Serving Runtime", "ClusterServingRuntime", vv)
-					// container.Resources = vv.Spec.Containers[0].Resources
-					break
-				}
-			}
-		}
-	}
+	p.Log.Info("Print Container Config", "Container", container)
 	if len(isvc.Spec.Predictor.PodSpec.Containers) == 0 {
 		isvc.Spec.Predictor.PodSpec.Containers = []v1.Container{
 			*container,
@@ -105,6 +118,7 @@ func (p *Predictor) Reconcile(isvc *v1beta1.InferenceService) error {
 	} else {
 		isvc.Spec.Predictor.PodSpec.Containers[0] = *container
 	}
+	p.Log.Info("Print InferenceService Config", "InferenceService", isvc)
 	//TODO now knative supports multi containers, consolidate logger/batcher/puller to the sidecar container
 	//https://github.com/kserve/kserve/issues/973
 	if hasInferenceLogging || hasInferenceBatcher {

@@ -48,8 +48,8 @@ type ClusterServiceRuntimeReconciler struct {
 
 func (r *ClusterServiceRuntimeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	//Fetch the ServingRuntime instance
-	csr := &v1beta1api.ClusterServingRuntime{}
-	if err := r.Client.Get(ctx, req.NamespacedName, csr); err != nil {
+	csrt := &v1beta1api.ClusterServingRuntime{}
+	if err := r.Client.Get(ctx, req.NamespacedName, csrt); err != nil {
 		if errors.IsNotFound(err) {
 			return reconcile.Result{}, nil
 		}
@@ -57,14 +57,14 @@ func (r *ClusterServiceRuntimeReconciler) Reconcile(ctx context.Context, req ctr
 	}
 
 	// If invalid ServerType is provided in rt.Spec or if this value doesn't match with that of the specified container, delete the deployment
-	if err := validateServingRuntimeSpec(csr); err != nil {
+	if err := validateServingRuntimeSpec(csrt); err != nil {
 		werr := fmt.Errorf("Invalid ServingRuntime Spec: %w", err)
 		return ctrl.Result{}, werr
 	}
 	return ctrl.Result{}, nil
 }
 
-func validateServingRuntimeSpec(rt *v1beta1api.ClusterServingRuntime) error {
+func validateServingRuntimeSpec(csrt *v1beta1api.ClusterServingRuntime) error {
 	return nil
 }
 

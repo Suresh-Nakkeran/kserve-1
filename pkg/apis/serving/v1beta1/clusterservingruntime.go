@@ -35,11 +35,13 @@ type ClusterServingRuntimeSpec struct {
 	// Set to true to disable use of this runtime
 	// +optional
 	Disabled *bool `json:"disabled,omitempty"`
-	// List of containers belonging to the pod.
-	// Containers cannot currently be added or removed.
-	// There must be at least one container in a Pod.
+	// This field points to the location of the trained model which is mounted onto the pod.
 	// +optional
-	Containers []v1.Container `json:"containers" patchStrategy:"merge" patchMergeKey:"name" validate:"required"`
+	StorageURI *string `json:"storageUri,omitempty"`
+	// Container enables overrides for the predictor.
+	// Each framework will have different defaults that are populated in the underlying container spec.
+	// +optional
+	Container v1.Container `json:"container,omitempty"`
 }
 
 // ClusterServingRuntimeStatus defines the observed state of ClusterServingRuntime
