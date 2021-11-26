@@ -1,4 +1,5 @@
 /*
+Copyright 2021 The KServe Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,10 +17,11 @@ limitations under the License.
 package gcs
 
 import (
-	"github.com/google/go-cmp/cmp"
-	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"testing"
+
+	"github.com/google/go-cmp/cmp"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestGcsSecret(t *testing.T) {

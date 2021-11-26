@@ -1,4 +1,5 @@
 /*
+Copyright 2021 The KServe Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,13 +20,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/satori/go.uuid"
-	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
 	"time"
+
+	uuid "github.com/satori/go.uuid"
+	"go.uber.org/zap"
 )
 
 const (

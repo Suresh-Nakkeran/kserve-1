@@ -1,4 +1,5 @@
 /*
+Copyright 2021 The KServe Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,11 +18,12 @@ package v1alpha1
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"testing"
 )
 
 var (

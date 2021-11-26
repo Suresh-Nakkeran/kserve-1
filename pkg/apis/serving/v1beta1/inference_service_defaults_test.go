@@ -1,4 +1,5 @@
 /*
+Copyright 2021 The KServe Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,8 +17,9 @@ limitations under the License.
 package v1beta1
 
 import (
-	"github.com/golang/protobuf/proto"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
 
 	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
