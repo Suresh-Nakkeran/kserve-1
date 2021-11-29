@@ -6,6 +6,8 @@ spec:
   supportedModelTypes:
     - name: pytorch
       version: "0"
+    - name: torchserve
+      version: "0"
   containers:
     - name: kserve-container
       image: kserve-torchserveserver:replace

@@ -76,6 +76,7 @@ func (isvc *InferenceService) Default() {
 }
 
 func (isvc *InferenceService) DefaultInferenceService(config *InferenceServicesConfig) {
+	mutatorLogger.Info("ISVC Spec", "Spec", isvc.Spec)
 	for _, component := range []Component{
 		&isvc.Spec.Predictor,
 		isvc.Spec.Transformer,
@@ -97,42 +98,40 @@ func (isvc *InferenceService) setPredictorModelDefaults(config *InferenceService
 	if isvc.Spec.Predictor.Model != nil {
 		return
 	}
-	var predictorModel *ModelSpec
 	switch {
 	case isvc.Spec.Predictor.SKLearn != nil:
-		predictorModel = isvc.assignSKLearnRuntime(config)
+		isvc.assignSKLearnRuntime(config)
 
 	case isvc.Spec.Predictor.Tensorflow != nil:
-		predictorModel = isvc.assignTensorflowRuntime(config)
+		isvc.assignTensorflowRuntime(config)
 
 	case isvc.Spec.Predictor.XGBoost != nil:
-		predictorModel = isvc.assignXGBoostRuntime(config)
+		isvc.assignXGBoostRuntime(config)
 
 	case isvc.Spec.Predictor.PyTorch != nil:
-		predictorModel = isvc.assignPyTorchRuntime(config)
+		isvc.assignPyTorchRuntime(config)
 
 	case isvc.Spec.Predictor.Triton != nil:
-		predictorModel = isvc.assignTritonRuntime(config)
+		isvc.assignTritonRuntime(config)
 
 	case isvc.Spec.Predictor.ONNX != nil:
-		predictorModel = isvc.assignONNXRuntime(config)
+		isvc.assignONNXRuntime(config)
 
 	case isvc.Spec.Predictor.PMML != nil:
-		predictorModel = isvc.assignPMMLRuntime(config)
+		isvc.assignPMMLRuntime(config)
 
 	case isvc.Spec.Predictor.LightGBM != nil:
-		predictorModel = isvc.assignLightGBMRuntime(config)
+		isvc.assignLightGBMRuntime(config)
 
 	case isvc.Spec.Predictor.Paddle != nil:
-		predictorModel = isvc.assignPaddleRuntime(config)
+		isvc.assignPaddleRuntime(config)
 	}
-	isvc.Spec.Predictor.Model = predictorModel
 }
 
-func (isvc *InferenceService) assignSKLearnRuntime(config *InferenceServicesConfig) *ModelSpec {
+func (isvc *InferenceService) assignSKLearnRuntime(config *InferenceServicesConfig) {
 	// skips if the storage uri is not specified
 	if isvc.Spec.Predictor.SKLearn.StorageURI == nil {
-		return nil
+		return
 	}
 	// assign built-in runtime based on protocol version
 	var runtime = constants.SKLearnServer
@@ -145,40 +144,38 @@ func (isvc *InferenceService) assignSKLearnRuntime(config *InferenceServicesConf
 			isvc.ObjectMeta.Labels[constants.ModelClassLabel] = constants.MLServerModelClassSKLearn
 		}
 	}
-	// remove sklearn spec
-	isvc.Spec.Predictor.SKLearn = nil
-
-	return &ModelSpec{
+	isvc.Spec.Predictor.Model = &ModelSpec{
 		Framework:              v1alpha1.Framework{Name: constants.SupportedModelSKLearn},
 		PredictorExtensionSpec: isvc.Spec.Predictor.SKLearn.PredictorExtensionSpec,
 		Runtime:                &runtime,
 	}
+	// remove sklearn spec
+	isvc.Spec.Predictor.SKLearn = nil
 }
 
-func (isvc *InferenceService) assignTensorflowRuntime(config *InferenceServicesConfig) *ModelSpec {
+func (isvc *InferenceService) assignTensorflowRuntime(config *InferenceServicesConfig) {
 	// skips if the storage uri is not specified
 	if isvc.Spec.Predictor.Tensorflow.StorageURI == nil {
-		return nil
+		return
 	}
 	// assign built-in runtime based on gpu config
 	var runtime = constants.TFServing
 	if utils.IsGPUEnabled(isvc.Spec.Predictor.Tensorflow.Resources) {
 		runtime = constants.TFServingGPU
 	}
-	// remove tensorflow spec
-	isvc.Spec.Predictor.Tensorflow = nil
-
-	return &ModelSpec{
+	isvc.Spec.Predictor.Model = &ModelSpec{
 		Framework:              v1alpha1.Framework{Name: constants.SupportedModelTensorflow},
 		PredictorExtensionSpec: isvc.Spec.Predictor.Tensorflow.PredictorExtensionSpec,
 		Runtime:                &runtime,
 	}
+	// remove tensorflow spec
+	isvc.Spec.Predictor.Tensorflow = nil
 }
 
-func (isvc *InferenceService) assignXGBoostRuntime(config *InferenceServicesConfig) *ModelSpec {
+func (isvc *InferenceService) assignXGBoostRuntime(config *InferenceServicesConfig) {
 	// skips if the storage uri is not specified
 	if isvc.Spec.Predictor.SKLearn.StorageURI == nil {
-		return nil
+		return
 	}
 	// assign built-in runtime based on protocol version
 	var runtime = constants.XGBServer
@@ -191,22 +188,21 @@ func (isvc *InferenceService) assignXGBoostRuntime(config *InferenceServicesConf
 			isvc.ObjectMeta.Labels[constants.ModelClassLabel] = constants.MLServerModelClassXGBoost
 		}
 	}
-	// remove xgboost spec
-	isvc.Spec.Predictor.XGBoost = nil
-
-	return &ModelSpec{
+	isvc.Spec.Predictor.Model = &ModelSpec{
 		Framework:              v1alpha1.Framework{Name: constants.SupportedModelXGBoost},
 		PredictorExtensionSpec: isvc.Spec.Predictor.XGBoost.PredictorExtensionSpec,
 		Runtime:                &runtime,
 	}
+	// remove xgboost spec
+	isvc.Spec.Predictor.XGBoost = nil
 }
 
-func (isvc *InferenceService) assignPyTorchRuntime(config *InferenceServicesConfig) *ModelSpec {
+func (isvc *InferenceService) assignPyTorchRuntime(config *InferenceServicesConfig) {
 	// skips if the storage uri is not specified or protocol version is not v1.
 	if isvc.Spec.Predictor.PyTorch.StorageURI == nil ||
 		(isvc.Spec.Predictor.PyTorch.ProtocolVersion != nil &&
 			constants.ProtocolV1 != *isvc.Spec.Predictor.PyTorch.ProtocolVersion) {
-		return nil
+		return
 	}
 	// assign built-in runtime based on gpu config
 	var runtime string
@@ -227,98 +223,92 @@ func (isvc *InferenceService) assignPyTorchRuntime(config *InferenceServicesConf
 			runtime = constants.TorchServeGPU
 		}
 	}
-	// remove pytorch spec
-	isvc.Spec.Predictor.PyTorch = nil
-
-	return &ModelSpec{
+	isvc.Spec.Predictor.Model = &ModelSpec{
 		Framework:              v1alpha1.Framework{Name: constants.SupportedModelPYTorch},
 		PredictorExtensionSpec: isvc.Spec.Predictor.PyTorch.PredictorExtensionSpec,
 		Runtime:                &runtime,
 	}
+	// remove pytorch spec
+	isvc.Spec.Predictor.PyTorch = nil
 }
 
-func (isvc *InferenceService) assignTritonRuntime(config *InferenceServicesConfig) *ModelSpec {
+func (isvc *InferenceService) assignTritonRuntime(config *InferenceServicesConfig) {
 	// skips if the storage uri is not specified
 	if isvc.Spec.Predictor.Triton.StorageURI == nil {
-		return nil
+		return
 	}
 	// assign built-in runtime
 	var runtime = constants.TritonServer
-	// remove triton spec
-	isvc.Spec.Predictor.Triton = nil
-
 	// TODO: pytorch framework is assigned as default, needs to find a to get framework from model.
-	return &ModelSpec{
+	isvc.Spec.Predictor.Model = &ModelSpec{
 		Framework:              v1alpha1.Framework{Name: constants.SupportedModelTriton},
 		PredictorExtensionSpec: isvc.Spec.Predictor.Triton.PredictorExtensionSpec,
 		Runtime:                &runtime,
 	}
+	// remove triton spec
+	isvc.Spec.Predictor.Triton = nil
 }
 
-func (isvc *InferenceService) assignONNXRuntime(config *InferenceServicesConfig) *ModelSpec {
+func (isvc *InferenceService) assignONNXRuntime(config *InferenceServicesConfig) {
 	// skips if the storage uri is not specified
 	if isvc.Spec.Predictor.ONNX.StorageURI == nil {
-		return nil
+		return
 	}
 	// assign built-in runtime
 	var runtime = constants.TritonServer
-	// remove onnx spec
-	isvc.Spec.Predictor.ONNX = nil
-
-	return &ModelSpec{
+	isvc.Spec.Predictor.Model = &ModelSpec{
 		Framework:              v1alpha1.Framework{Name: constants.SupportedModelONNX},
 		PredictorExtensionSpec: isvc.Spec.Predictor.ONNX.PredictorExtensionSpec,
 		Runtime:                &runtime,
 	}
+	// remove onnx spec
+	isvc.Spec.Predictor.ONNX = nil
 }
 
-func (isvc *InferenceService) assignPMMLRuntime(config *InferenceServicesConfig) *ModelSpec {
+func (isvc *InferenceService) assignPMMLRuntime(config *InferenceServicesConfig) {
 	// skips if the storage uri is not specified
 	if isvc.Spec.Predictor.PMML.StorageURI == nil {
-		return nil
+		return
 	}
 	// assign built-in runtime
 	var runtime = constants.PMMLServer
-	// remove pmml spec
-	isvc.Spec.Predictor.PMML = nil
-
-	return &ModelSpec{
+	isvc.Spec.Predictor.Model = &ModelSpec{
 		Framework:              v1alpha1.Framework{Name: constants.SupportedModelPMML},
 		PredictorExtensionSpec: isvc.Spec.Predictor.PMML.PredictorExtensionSpec,
 		Runtime:                &runtime,
 	}
+	// remove pmml spec
+	isvc.Spec.Predictor.PMML = nil
 }
 
-func (isvc *InferenceService) assignLightGBMRuntime(config *InferenceServicesConfig) *ModelSpec {
+func (isvc *InferenceService) assignLightGBMRuntime(config *InferenceServicesConfig) {
 	// skips if the storage uri is not specified
 	if isvc.Spec.Predictor.LightGBM.StorageURI == nil {
-		return nil
+		return
 	}
 	// assign built-in runtime
 	var runtime = constants.LGBServer
-	// remove lightgbm spec
-	isvc.Spec.Predictor.LightGBM = nil
-
-	return &ModelSpec{
+	isvc.Spec.Predictor.Model = &ModelSpec{
 		Framework:              v1alpha1.Framework{Name: constants.SupportedModelLightGBM},
 		PredictorExtensionSpec: isvc.Spec.Predictor.LightGBM.PredictorExtensionSpec,
 		Runtime:                &runtime,
 	}
+	// remove lightgbm spec
+	isvc.Spec.Predictor.LightGBM = nil
 }
 
-func (isvc *InferenceService) assignPaddleRuntime(config *InferenceServicesConfig) *ModelSpec {
+func (isvc *InferenceService) assignPaddleRuntime(config *InferenceServicesConfig) {
 	// skips if the storage uri is not specified
 	if isvc.Spec.Predictor.SKLearn.StorageURI == nil {
-		return nil
+		return
 	}
 	// assign built-in runtime
 	var runtime = constants.PaddleServer
-	// remove paddle spec
-	isvc.Spec.Predictor.Paddle = nil
-
-	return &ModelSpec{
+	isvc.Spec.Predictor.Model = &ModelSpec{
 		Framework:              v1alpha1.Framework{Name: constants.SupportedModelPaddle},
 		PredictorExtensionSpec: isvc.Spec.Predictor.Paddle.PredictorExtensionSpec,
 		Runtime:                &runtime,
 	}
+	// remove paddle spec
+	isvc.Spec.Predictor.Paddle = nil
 }

@@ -2,9 +2,8 @@ resources:
   - kserve-tensorflow-serving.yaml
   - kserve-tensorflow-serving-gpu.yaml
   - kserve-sklearnserver.yaml
-  - kserve-mlserver-sklearn.yaml
+  - kserve-mlserver.yaml
   - kserve-xgbserver.yaml
-  - kserve-mlserver-xgb.yaml
   - kserve-tritonserver.yaml
   - kserve-pmmlserver.yaml
   - kserve-paddleserver.yaml
