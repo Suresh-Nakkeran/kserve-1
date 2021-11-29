@@ -20,6 +20,7 @@ from kserve import V1beta1PredictorSpec
 from kserve import V1beta1TritonSpec
 from kserve import V1beta1InferenceServiceSpec
 from kserve import V1beta1InferenceService
+from kserve import V1alpha1Framework, V1beta1ModelSpec
 from ..common.utils import KSERVE_TEST_NAMESPACE
 
 kserve_client = KServeClient(config_file=os.environ.get("KUBECONFIG", "~/.kube/config"))
@@ -30,6 +31,41 @@ def test_triton():
     predictor = V1beta1PredictorSpec(
         min_replicas=1,
         triton=V1beta1TritonSpec(
+            storage_uri='gs://kfserving-samples/models/tensorrt'
+        )
+    )
+
+    isvc = V1beta1InferenceService(api_version=constants.KSERVE_V1BETA1,
+                                   kind=constants.KSERVE_KIND,
+                                   metadata=client.V1ObjectMeta(
+                                       name=service_name, namespace=KSERVE_TEST_NAMESPACE),
+                                   spec=V1beta1InferenceServiceSpec(predictor=predictor))
+
+    kserve_client.create(isvc)
+    try:
+        kserve_client.wait_isvc_ready(service_name, namespace=KSERVE_TEST_NAMESPACE)
+    except RuntimeError as e:
+        print(kserve_client.api_instance.get_namespaced_custom_object("serving.knative.dev", "v1",
+                                                                      KSERVE_TEST_NAMESPACE,
+                                                                      "services", service_name + "-predictor-default"))
+        deployments = kserve_client.app_api. \
+            list_namespaced_deployment(KSERVE_TEST_NAMESPACE, label_selector='serving.kserve.io/'
+                                       'inferenceservice={}'.
+                                       format(service_name))
+        for deployment in deployments.items:
+            print(deployment)
+        raise e
+    kserve_client.delete(service_name, KSERVE_TEST_NAMESPACE)
+
+
+def test_triton_runtime():
+    service_name = 'isvc-triton-runtime'
+    predictor = V1beta1PredictorSpec(
+        min_replicas=1,
+        model=V1beta1ModelSpec(
+            framework=V1alpha1Framework(
+                name="triton",
+            ),
             storage_uri='gs://kfserving-samples/models/tensorrt'
         )
     )

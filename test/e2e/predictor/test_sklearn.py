@@ -20,11 +20,14 @@ from kserve import (
     V1beta1InferenceServiceSpec,
     V1beta1PredictorSpec,
     V1beta1SKLearnSpec,
+    V1beta1PodSpec,
+    V1alpha1Framework,
+    V1beta1ModelSpec,
 )
 from kubernetes.client import V1ResourceRequirements
 
 from ..common.utils import predict
-from ..common.utils import KSERVE_TEST_NAMESPACE
+from ..common.utils import KSERVE_TEST_NAMESPACE, MODEL_CLASS_NAME
 
 kserve_client = KServeClient(config_file=os.environ.get("KUBECONFIG", "~/.kube/config"))
 
@@ -77,6 +80,76 @@ def test_sklearn_v2_kserve():
         kind=constants.KSERVE_KIND,
         metadata=client.V1ObjectMeta(
             name=service_name, namespace=KSERVE_TEST_NAMESPACE
+        ),
+        spec=V1beta1InferenceServiceSpec(predictor=predictor),
+    )
+
+    kserve_client.create(isvc)
+    kserve_client.wait_isvc_ready(service_name, namespace=KSERVE_TEST_NAMESPACE)
+
+    res = predict(service_name, "./data/iris_input_v2.json", protocol_version="v2")
+    assert res["outputs"][0]["data"] == [1, 2]
+
+    kserve_client.delete(service_name, KSERVE_TEST_NAMESPACE)
+
+
+def test_sklearn_runtime_kserve():
+    service_name = "isvc-sklearn-runtime"
+    predictor = V1beta1PredictorSpec(
+        min_replicas=1,
+        model=V1beta1ModelSpec(
+            framework=V1alpha1Framework(
+                name="sklearn",
+            ),
+            storage_uri="gs://kfserving-samples/models/sklearn/iris",
+            resources=V1ResourceRequirements(
+                requests={"cpu": "100m", "memory": "256Mi"},
+                limits={"cpu": "100m", "memory": "256Mi"},
+            ),
+        ),
+    )
+
+    isvc = V1beta1InferenceService(
+        api_version=constants.KSERVE_V1BETA1,
+        kind=constants.KSERVE_KIND,
+        metadata=client.V1ObjectMeta(
+            name=service_name, namespace=KSERVE_TEST_NAMESPACE
+        ),
+        spec=V1beta1InferenceServiceSpec(predictor=predictor),
+    )
+
+    kserve_client.create(isvc)
+    kserve_client.wait_isvc_ready(service_name, namespace=KSERVE_TEST_NAMESPACE)
+    res = predict(service_name, "./data/iris_input.json")
+    assert res["predictions"] == [1, 1]
+    kserve_client.delete(service_name, KSERVE_TEST_NAMESPACE)
+
+
+def test_sklearn_v2_runtime_kserve():
+    service_name = "isvc-sklearn-v2-runtime"
+    labels = dict()
+    labels[MODEL_CLASS_NAME] = "mlserver_sklearn_SKLearnModel"
+
+    predictor = V1beta1PredictorSpec(
+        min_replicas=1,
+        model=V1beta1ModelSpec(
+            framework=V1alpha1Framework(
+                name="sklearn",
+            ),
+            storage_uri="gs://kfserving-examples/models/sklearn/irisv2",
+            protocol_version="v2",
+            resources=V1ResourceRequirements(
+                requests={"cpu": "100m", "memory": "256Mi"},
+                limits={"cpu": "100m", "memory": "256Mi"},
+            ),
+        ),
+    )
+
+    isvc = V1beta1InferenceService(
+        api_version=constants.KSERVE_V1BETA1,
+        kind=constants.KSERVE_KIND,
+        metadata=client.V1ObjectMeta(
+            name=service_name, namespace=KSERVE_TEST_NAMESPACE, labels=labels
         ),
         spec=V1beta1InferenceServiceSpec(predictor=predictor),
     )

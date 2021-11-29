@@ -24,6 +24,7 @@ logging.basicConfig(level=logging.INFO)
 
 KSERVE_NAMESPACE = "kserve"
 KSERVE_TEST_NAMESPACE = "kserve-ci-e2e-test"
+MODEL_CLASS_NAME = "modelClass"
 
 
 def predict(service_name, input_json, protocol_version="v1",

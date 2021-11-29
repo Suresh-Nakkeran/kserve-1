@@ -21,9 +21,10 @@ from kserve import V1beta1PredictorSpec
 from kserve import V1beta1TorchServeSpec
 from kserve import V1beta1InferenceServiceSpec
 from kserve import V1beta1InferenceService
+from kserve import V1alpha1Framework, V1beta1ModelSpec
 from kubernetes.client import V1ResourceRequirements
 from ..common.utils import predict
-from ..common.utils import KSERVE_TEST_NAMESPACE
+from ..common.utils import KSERVE_TEST_NAMESPACE, MODEL_CLASS_NAME
 
 kserve_client = KServeClient(config_file=os.environ.get("KUBECONFIG", "~/.kube/config"))
 
@@ -46,6 +47,49 @@ def test_pytorch():
                                    kind=constants.KSERVE_KIND,
                                    metadata=client.V1ObjectMeta(
                                        name=service_name, namespace=KSERVE_TEST_NAMESPACE),
+                                   spec=V1beta1InferenceServiceSpec(predictor=predictor))
+
+    kserve_client.create(isvc)
+    try:
+        kserve_client.wait_isvc_ready(service_name, namespace=KSERVE_TEST_NAMESPACE)
+    except RuntimeError as e:
+        print(kserve_client.api_instance.get_namespaced_custom_object("serving.knative.dev", "v1",
+                                                                      KSERVE_TEST_NAMESPACE,
+                                                                      "services", service_name + "-predictor-default"))
+        pods = kserve_client.core_api.list_namespaced_pod(KSERVE_TEST_NAMESPACE,
+                                                          label_selector='serving.kserve.io/inferenceservice={}'.
+                                                          format(service_name))
+        for pod in pods.items:
+            print(pod)
+        raise e
+    res = predict(service_name, './data/cifar_input.json')
+    assert(np.argmax(res["predictions"]) == 3)
+    kserve_client.delete(service_name, KSERVE_TEST_NAMESPACE)
+
+
+def test_pytorch_runtime():
+    service_name = 'isvc-pytorch-runtime'
+    labels = dict()
+    labels[MODEL_CLASS_NAME] = 'Net'
+
+    predictor = V1beta1PredictorSpec(
+        min_replicas=1,
+        model=V1beta1ModelSpec(
+            framework=V1alpha1Framework(
+                name="pytorch",
+            ),
+            storage_uri='gs://kfserving-samples/models/pytorch/cifar10',
+            resources=V1ResourceRequirements(
+                requests={'cpu': '100m', 'memory': '2Gi'},
+                limits={'cpu': '100m', 'memory': '2Gi'}
+            )
+        )
+    )
+
+    isvc = V1beta1InferenceService(api_version=constants.KSERVE_V1BETA1,
+                                   kind=constants.KSERVE_KIND,
+                                   metadata=client.V1ObjectMeta(
+                                       name=service_name, namespace=KSERVE_TEST_NAMESPACE, labels=labels),
                                    spec=V1beta1InferenceServiceSpec(predictor=predictor))
 
     kserve_client.create(isvc)
