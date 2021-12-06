@@ -1,3 +1,4 @@
+# Copyright 2021 The KServe Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,6 +41,7 @@ from kserve.models.v1beta1_component_status_spec import V1beta1ComponentStatusSp
 from kserve.models.v1beta1_custom_explainer import V1beta1CustomExplainer
 from kserve.models.v1beta1_custom_predictor import V1beta1CustomPredictor
 from kserve.models.v1beta1_custom_transformer import V1beta1CustomTransformer
+from kserve.models.v1beta1_deploy_config import V1beta1DeployConfig
 from kserve.models.v1beta1_explainer_config import V1beta1ExplainerConfig
 from kserve.models.v1beta1_explainer_extension_spec import V1beta1ExplainerExtensionSpec
 from kserve.models.v1beta1_explainer_spec import V1beta1ExplainerSpec
@@ -52,6 +54,7 @@ from kserve.models.v1beta1_inference_services_config import V1beta1InferenceServ
 from kserve.models.v1beta1_ingress_config import V1beta1IngressConfig
 from kserve.models.v1beta1_light_gbm_spec import V1beta1LightGBMSpec
 from kserve.models.v1beta1_logger_spec import V1beta1LoggerSpec
+from kserve.models.v1beta1_model_spec import V1beta1ModelSpec
 from kserve.models.v1beta1_onnx_runtime_spec import V1beta1ONNXRuntimeSpec
 from kserve.models.v1beta1_pmml_spec import V1beta1PMMLSpec
 from kserve.models.v1beta1_paddle_server_spec import V1beta1PaddleServerSpec

@@ -1,4 +1,5 @@
 /*
+Copyright 2021 The KServe Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,12 +18,13 @@ package mocks
 
 import (
 	"bytes"
-	gstorage "cloud.google.com/go/storage"
 	"context"
 	"fmt"
+	"strings"
+
+	gstorage "cloud.google.com/go/storage"
 	"github.com/googleapis/google-cloud-go-testing/storage/stiface"
 	"google.golang.org/api/iterator"
-	"strings"
 )
 
 type mockGCSClient struct {

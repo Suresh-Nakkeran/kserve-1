@@ -1,4 +1,5 @@
 /*
+Copyright 2021 The KServe Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,10 +18,11 @@ package testing
 
 import (
 	"fmt"
+	"reflect"
+
 	"github.com/onsi/gomega/format"
 	"github.com/onsi/gomega/types"
 	"k8s.io/apimachinery/pkg/api/equality"
-	"reflect"
 )
 
 // Gomega does not support semantic equal so adding this here in testing util

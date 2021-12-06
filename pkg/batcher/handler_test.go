@@ -1,4 +1,5 @@
 /*
+Copyright 2021 The KServe Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,15 +20,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/onsi/gomega"
 	"io/ioutil"
-	pkglogging "knative.dev/pkg/logging"
 	"net/http"
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
 	"sync"
 	"testing"
+
+	"github.com/onsi/gomega"
+	pkglogging "knative.dev/pkg/logging"
 )
 
 func serveRequest(batchHandler *BatchHandler, wg *sync.WaitGroup, index int) {
