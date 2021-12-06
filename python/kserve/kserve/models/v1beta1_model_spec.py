@@ -158,7 +158,8 @@ class V1beta1ModelSpec(object):
             self.lifecycle = lifecycle
         if liveness_probe is not None:
             self.liveness_probe = liveness_probe
-        self.name = name
+        if name is not None:
+            self.name = name
         if ports is not None:
             self.ports = ports
         if protocol_version is not None:
@@ -417,8 +418,6 @@ class V1beta1ModelSpec(object):
         :param name: The name of this V1beta1ModelSpec.  # noqa: E501
         :type: str
         """
-        if self.local_vars_configuration.client_side_validation and name is None:  # noqa: E501
-            raise ValueError("Invalid value for `name`, must not be `None`")  # noqa: E501
 
         self._name = name
 

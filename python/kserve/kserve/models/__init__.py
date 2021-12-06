@@ -28,7 +28,17 @@
 from __future__ import absolute_import
 
 # import models into model package
+from kserve.models.v1alpha1_built_in_adapter import V1alpha1BuiltInAdapter
+from kserve.models.v1alpha1_cluster_serving_runtime import V1alpha1ClusterServingRuntime
+from kserve.models.v1alpha1_cluster_serving_runtime_list import V1alpha1ClusterServingRuntimeList
+from kserve.models.v1alpha1_container import V1alpha1Container
+from kserve.models.v1alpha1_framework import V1alpha1Framework
 from kserve.models.v1alpha1_model_spec import V1alpha1ModelSpec
+from kserve.models.v1alpha1_serving_runtime import V1alpha1ServingRuntime
+from kserve.models.v1alpha1_serving_runtime_list import V1alpha1ServingRuntimeList
+from kserve.models.v1alpha1_serving_runtime_pod_spec import V1alpha1ServingRuntimePodSpec
+from kserve.models.v1alpha1_serving_runtime_spec import V1alpha1ServingRuntimeSpec
+from kserve.models.v1alpha1_storage_helper import V1alpha1StorageHelper
 from kserve.models.v1alpha1_trained_model import V1alpha1TrainedModel
 from kserve.models.v1alpha1_trained_model_list import V1alpha1TrainedModelList
 from kserve.models.v1alpha1_trained_model_spec import V1alpha1TrainedModelSpec
