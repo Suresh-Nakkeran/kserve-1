@@ -21,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// +k8s:openapi-gen=true
 type Framework struct {
 	// Name of the model format/framework.
 	// +required
@@ -32,6 +33,7 @@ type Framework struct {
 	Version *string `json:"version,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type Container struct {
 	Name            string                      `json:"name,omitempty" validate:"required"`
 	Image           string                      `json:"image,omitempty" validate:"required"`
@@ -50,11 +52,13 @@ type Container struct {
 	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type StorageHelper struct {
 	// +optional
 	Disabled bool `json:"disabled,omitempty"`
 }
 
+// +k8s:openapi-gen=true
 type ServingRuntimePodSpec struct {
 	// List of containers belonging to the pod.
 	// Containers cannot currently be added or removed.
@@ -84,6 +88,7 @@ type ServingRuntimePodSpec struct {
 // ServingRuntimeSpec defines the desired state of ServingRuntime. This spec is currently provisional
 // and are subject to change as details regarding single-model serving and multi-model serving
 // are hammered out.
+// +k8s:openapi-gen=true
 type ServingRuntimeSpec struct {
 	// Model formats and version supported by this runtime
 	SupportedModelTypes []Framework `json:"supportedModelTypes,omitempty"`
@@ -125,10 +130,12 @@ type ServingRuntimeSpec struct {
 }
 
 // ServingRuntimeStatus defines the observed state of ServingRuntime
+// +k8s:openapi-gen=true
 type ServingRuntimeStatus struct {
 }
 
 // ServerType constant for specifying the runtime name
+// +k8s:openapi-gen=true
 // +kubebuilder:validation:Enum=triton;mlserver
 type ServerType string
 
@@ -140,6 +147,7 @@ const (
 	MLServer ServerType = "mlserver"
 )
 
+// +k8s:openapi-gen=true
 type BuiltInAdapter struct {
 	// ServerType can be one of triton/mlserver and the runtime's container must have the same name
 	ServerType ServerType `json:"serverType,omitempty"`
@@ -152,6 +160,7 @@ type BuiltInAdapter struct {
 }
 
 // ServingRuntime is the Schema for the servingruntimes API
+// +k8s:openapi-gen=true
 // +kubebuilder:object:root=true
 // +kubebuilder:printcolumn:name="Disabled",type="boolean",JSONPath=".spec.disabled"
 // +kubebuilder:printcolumn:name="ModelType",type="string",JSONPath=".spec.supportedModelTypes[*].name"
@@ -166,6 +175,7 @@ type ServingRuntime struct {
 }
 
 // ServingRuntimeList contains a list of ServingRuntime
+// +k8s:openapi-gen=true
 // +kubebuilder:object:root=true
 type ServingRuntimeList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -174,6 +184,7 @@ type ServingRuntimeList struct {
 }
 
 // ClusterServingRuntime is the Schema for the servingruntimes API
+// +k8s:openapi-gen=true
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope="Cluster"
 // +kubebuilder:printcolumn:name="Disabled",type="boolean",JSONPath=".spec.disabled"
@@ -188,7 +199,8 @@ type ClusterServingRuntime struct {
 	Status ServingRuntimeStatus `json:"status,omitempty"`
 }
 
-// ServingRuntimeList contains a list of ServingRuntime
+// ClusterServingRuntimeList contains a list of ClusterServingRuntime
+// +k8s:openapi-gen=true
 // +kubebuilder:object:root=true
 type ClusterServingRuntimeList struct {
 	metav1.TypeMeta `json:",inline"`
