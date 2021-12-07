@@ -20,6 +20,8 @@ from kserve import (
     V1beta1InferenceServiceSpec,
     V1beta1PredictorSpec,
     V1beta1TorchServeSpec,
+    V1alpha1Framework,
+    V1beta1ModelSpec,
 )
 from kubernetes.client import V1ResourceRequirements
 
@@ -34,6 +36,41 @@ def test_torchserve_kserve():
     predictor = V1beta1PredictorSpec(
         min_replicas=1,
         pytorch=V1beta1TorchServeSpec(
+            storage_uri="gs://kfserving-examples/models/torchserve/image_classifier",
+            protocol_version="v1",
+            resources=V1ResourceRequirements(
+                requests={"cpu": "1", "memory": "4Gi"},
+                limits={"cpu": "1", "memory": "4Gi"},
+            ),
+        ),
+    )
+
+    isvc = V1beta1InferenceService(
+        api_version=constants.KSERVE_V1BETA1,
+        kind=constants.KSERVE_KIND,
+        metadata=client.V1ObjectMeta(
+            name=service_name, namespace=KSERVE_TEST_NAMESPACE
+        ),
+        spec=V1beta1InferenceServiceSpec(predictor=predictor),
+    )
+
+    kserve_client.create(isvc)
+    kserve_client.wait_isvc_ready(service_name, namespace=KSERVE_TEST_NAMESPACE)
+
+    res = predict(service_name, "./data/torchserve_input.json")
+    assert(res.get("predictions")[0] == 2)
+    kserve_client.delete(service_name, KSERVE_TEST_NAMESPACE)
+
+
+def test_torchserve_runtime_kserve():
+    service_name = "mnist-runtime"
+    predictor = V1beta1PredictorSpec(
+        min_replicas=1,
+        model=V1beta1ModelSpec(
+            framework=V1alpha1Framework(
+                name="torchserve",
+            ),
+            runtime="kserve-torchserve",
             storage_uri="gs://kfserving-examples/models/torchserve/image_classifier",
             protocol_version="v1",
             resources=V1ResourceRequirements(
