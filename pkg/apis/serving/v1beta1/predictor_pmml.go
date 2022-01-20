@@ -34,7 +34,6 @@ type PMMLSpec struct {
 
 var (
 	_ ComponentImplementation = &PMMLSpec{}
-	_ PredictorImplementation = &PMMLSpec{}
 )
 
 // Validate returns an error if invalid
@@ -76,13 +75,4 @@ func (p *PMMLSpec) GetStorageUri() *string {
 
 func (p *PMMLSpec) GetProtocol() constants.InferenceServiceProtocol {
 	return constants.ProtocolV1
-}
-
-func (p *PMMLSpec) IsMMS(config *InferenceServicesConfig) bool {
-	return config.Predictors.PMML.MultiModelServer
-}
-
-func (p *PMMLSpec) IsFrameworkSupported(framework string, config *InferenceServicesConfig) bool {
-	supportedFrameworks := config.Predictors.PMML.SupportedFrameworks
-	return isFrameworkIncluded(supportedFrameworks, framework)
 }

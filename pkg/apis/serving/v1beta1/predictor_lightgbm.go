@@ -35,7 +35,6 @@ type LightGBMSpec struct {
 
 var (
 	_ ComponentImplementation = &LightGBMSpec{}
-	_ PredictorImplementation = &LightGBMSpec{}
 )
 
 // Validate returns an error if invalid
@@ -84,13 +83,4 @@ func (x *LightGBMSpec) GetStorageUri() *string {
 
 func (x *LightGBMSpec) GetProtocol() constants.InferenceServiceProtocol {
 	return constants.ProtocolV1
-}
-
-func (x *LightGBMSpec) IsMMS(config *InferenceServicesConfig) bool {
-	return config.Predictors.LightGBM.MultiModelServer
-}
-
-func (x *LightGBMSpec) IsFrameworkSupported(framework string, config *InferenceServicesConfig) bool {
-	supportedFrameworks := config.Predictors.LightGBM.SupportedFrameworks
-	return isFrameworkIncluded(supportedFrameworks, framework)
 }

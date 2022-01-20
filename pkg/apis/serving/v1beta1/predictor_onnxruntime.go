@@ -42,7 +42,6 @@ type ONNXRuntimeSpec struct {
 
 var (
 	_ ComponentImplementation = &ONNXRuntimeSpec{}
-	_ PredictorImplementation = &ONNXRuntimeSpec{}
 )
 
 // Validate returns an error if invalid
@@ -97,13 +96,4 @@ func (o *ONNXRuntimeSpec) GetStorageUri() *string {
 
 func (o *ONNXRuntimeSpec) GetProtocol() constants.InferenceServiceProtocol {
 	return constants.ProtocolV1
-}
-
-func (o *ONNXRuntimeSpec) IsMMS(config *InferenceServicesConfig) bool {
-	return config.Predictors.ONNX.MultiModelServer
-}
-
-func (o *ONNXRuntimeSpec) IsFrameworkSupported(framework string, config *InferenceServicesConfig) bool {
-	supportedFrameworks := config.Predictors.ONNX.SupportedFrameworks
-	return isFrameworkIncluded(supportedFrameworks, framework)
 }

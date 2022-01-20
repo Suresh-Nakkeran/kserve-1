@@ -34,7 +34,6 @@ type XGBoostSpec struct {
 
 var (
 	_ ComponentImplementation = &XGBoostSpec{}
-	_ PredictorImplementation = &XGBoostSpec{}
 )
 
 // Validate returns an error if invalid
@@ -186,25 +185,5 @@ func (x *XGBoostSpec) GetProtocol() constants.InferenceServiceProtocol {
 		return *x.ProtocolVersion
 	} else {
 		return constants.ProtocolV1
-	}
-}
-
-func (x *XGBoostSpec) IsMMS(config *InferenceServicesConfig) bool {
-	predictorConfig := x.getPredictorConfig(config)
-	return predictorConfig.MultiModelServer
-}
-
-func (x *XGBoostSpec) IsFrameworkSupported(framework string, config *InferenceServicesConfig) bool {
-	predictorConfig := x.getPredictorConfig(config)
-	supportedFrameworks := predictorConfig.SupportedFrameworks
-	return isFrameworkIncluded(supportedFrameworks, framework)
-}
-
-func (x *XGBoostSpec) getPredictorConfig(config *InferenceServicesConfig) *PredictorConfig {
-	protocol := x.GetProtocol()
-	if protocol == constants.ProtocolV1 {
-		return config.Predictors.XGBoost.V1
-	} else {
-		return config.Predictors.XGBoost.V2
 	}
 }

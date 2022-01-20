@@ -75,12 +75,3 @@ func (p *PaddleServerSpec) GetStorageUri() *string {
 func (p *PaddleServerSpec) GetProtocol() constants.InferenceServiceProtocol {
 	return constants.ProtocolV1
 }
-
-func (p *PaddleServerSpec) IsMMS(config *InferenceServicesConfig) bool {
-	return config.Predictors.Paddle.MultiModelServer
-}
-
-func (p *PaddleServerSpec) IsFrameworkSupported(framework string, config *InferenceServicesConfig) bool {
-	supportedFrameworks := config.Predictors.Paddle.SupportedFrameworks
-	return isFrameworkIncluded(supportedFrameworks, framework)
-}

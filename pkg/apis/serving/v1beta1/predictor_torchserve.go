@@ -43,7 +43,6 @@ type TorchServeSpec struct {
 
 var (
 	_ ComponentImplementation = &TorchServeSpec{}
-	_ PredictorImplementation = &TorchServeSpec{}
 )
 
 // Validate returns an error if invalid
@@ -123,13 +122,4 @@ func (t *TorchServeSpec) GetStorageUri() *string {
 
 func (t *TorchServeSpec) GetProtocol() constants.InferenceServiceProtocol {
 	return constants.ProtocolV1
-}
-
-func (t *TorchServeSpec) IsMMS(config *InferenceServicesConfig) bool {
-	return config.Predictors.PyTorch.MultiModelServer
-}
-
-func (t *TorchServeSpec) IsFrameworkSupported(framework string, config *InferenceServicesConfig) bool {
-	supportedFrameworks := config.Predictors.PyTorch.SupportedFrameworks
-	return isFrameworkIncluded(supportedFrameworks, framework)
 }

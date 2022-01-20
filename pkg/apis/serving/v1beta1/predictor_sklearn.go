@@ -34,7 +34,6 @@ type SKLearnSpec struct {
 
 var (
 	_ ComponentImplementation = &SKLearnSpec{}
-	_ PredictorImplementation = &SKLearnSpec{}
 )
 
 // Validate returns an error if invalid
@@ -181,25 +180,5 @@ func (k *SKLearnSpec) GetProtocol() constants.InferenceServiceProtocol {
 		return *k.ProtocolVersion
 	} else {
 		return constants.ProtocolV1
-	}
-}
-
-func (k *SKLearnSpec) IsMMS(config *InferenceServicesConfig) bool {
-	predictorConfig := k.getPredictorConfig(config)
-	return predictorConfig.MultiModelServer
-}
-
-func (k *SKLearnSpec) IsFrameworkSupported(framework string, config *InferenceServicesConfig) bool {
-	predictorConfig := k.getPredictorConfig(config)
-	supportedFrameworks := predictorConfig.SupportedFrameworks
-	return isFrameworkIncluded(supportedFrameworks, framework)
-}
-
-func (k *SKLearnSpec) getPredictorConfig(config *InferenceServicesConfig) *PredictorConfig {
-	protocol := k.GetProtocol()
-	if protocol == constants.ProtocolV1 {
-		return config.Predictors.SKlearn.V1
-	} else {
-		return config.Predictors.SKlearn.V2
 	}
 }

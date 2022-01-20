@@ -254,8 +254,7 @@ func (r *TrainedModelReconciler) updateConditions(req ctrl.Request, tm *v1alpha1
 	}
 
 	// Update Framework Supported condition
-	predictor := isvc.Spec.Predictor.GetPredictorImplementation()
-	if predictor != nil && (*predictor).IsFrameworkSupported(tm.Spec.Model.Framework, isvcConfig) {
+	if isvc.Spec.Predictor.Model != nil && r.isFrameworkSupported(tm.Spec.Model.Framework, isvc) {
 		log.Info("Framework is supported", "TrainedModel", tm.Name, "InferenceService", isvc.Name, "Framework", tm.Spec.Model.Framework)
 		tm.Status.SetCondition(v1alpha1api.FrameworkSupported, &apis.Condition{
 			Status: v1.ConditionTrue,
@@ -323,4 +322,17 @@ func (r *TrainedModelReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1api.TrainedModel{}).
 		Complete(r)
+}
+
+func (r *TrainedModelReconciler) isFrameworkSupported(framework string, isvc *v1beta1api.InferenceService) bool {
+	runtime, err := v1beta1utils.GetServingRuntime(r.Client, *isvc.Spec.Predictor.Model.Runtime, isvc.Namespace)
+	if err != nil {
+		return false
+	}
+	for _, modelFormat := range runtime.RuntimeSpec.SupportedModelFormats {
+		if framework == modelFormat.Name {
+			return true
+		}
+	}
+	return false
 }

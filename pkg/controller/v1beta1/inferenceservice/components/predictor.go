@@ -19,6 +19,8 @@ package components
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
+
 	"github.com/go-logr/logr"
 	"github.com/kserve/kserve/pkg/constants"
 	"github.com/kserve/kserve/pkg/controller/v1beta1/inferenceservice/reconcilers/knative"
@@ -91,16 +93,16 @@ func (p *Predictor) Reconcile(isvc *v1beta1.InferenceService) error {
 				return err
 			}
 
-			if r.IsDisabled() {
+			if r.RuntimeSpec.IsDisabled() {
 				return fmt.Errorf("specified runtime %s is disabled", *isvc.Spec.Predictor.Model.Runtime)
 			}
 
 			// Verify that the selected runtime supports the specified framework.
-			if !isvc.Spec.Predictor.Model.RuntimeSupportsModel(r) {
+			if !isvc.Spec.Predictor.Model.RuntimeSupportsModel(&r.RuntimeSpec) {
 				return fmt.Errorf("specified runtime %s does not support specified framework/version", *isvc.Spec.Predictor.Model.Runtime)
 			}
 
-			sRuntime = *r
+			sRuntime = r.RuntimeSpec
 		} else {
 			runtimes, err := isvc.Spec.Predictor.Model.GetSupportingRuntimes(p.client, isvc.Namespace, false)
 			if err != nil {
@@ -110,7 +112,8 @@ func (p *Predictor) Reconcile(isvc *v1beta1.InferenceService) error {
 				return fmt.Errorf("no runtime found to support predictor with model type: %v", isvc.Spec.Predictor.Model.ModelFormat)
 			}
 			// Get first supporting runtime.
-			sRuntime = runtimes[0]
+			isvc.Spec.Predictor.Model.Runtime = proto.String(runtimes[0].Name)
+			sRuntime = runtimes[0].RuntimeSpec
 		}
 		if len(sRuntime.Containers) == 0 {
 			return errors.New("no container configuration found in selected serving runtime")

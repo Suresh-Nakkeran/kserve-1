@@ -24,7 +24,6 @@ import (
 	"strings"
 
 	"github.com/kserve/kserve/pkg/apis/serving/v1alpha1"
-	"github.com/kserve/kserve/pkg/apis/serving/v1beta1"
 	v1beta1api "github.com/kserve/kserve/pkg/apis/serving/v1beta1"
 	"github.com/kserve/kserve/pkg/constants"
 	"github.com/kserve/kserve/pkg/utils"
@@ -38,7 +37,7 @@ import (
 
 // IsMMSPredictor Only enable MMS predictor when predictor config sets MMS to true and storage uri is not set
 func IsMMSPredictor(predictor *v1beta1api.PredictorSpec, isvcConfig *v1beta1api.InferenceServicesConfig) bool {
-	return predictor.GetImplementation().IsMMS(isvcConfig) && predictor.GetImplementation().GetStorageUri() == nil
+	return predictor.GetImplementation().GetStorageUri() == nil
 }
 
 func IsMemoryResourceAvailable(isvc *v1beta1api.InferenceService, totalReqMemory resource.Quantity, isvcConfig *v1beta1api.InferenceServicesConfig) bool {
@@ -48,12 +47,8 @@ func IsMemoryResourceAvailable(isvc *v1beta1api.InferenceService, totalReqMemory
 
 	container := isvc.Spec.Predictor.GetImplementation().GetContainer(isvc.ObjectMeta, isvc.Spec.Predictor.GetExtensions(), isvcConfig)
 
-	if constants.InferenceServiceContainerName == container.Name {
-		predictorMemoryLimit := container.Resources.Limits.Memory()
-		return predictorMemoryLimit.Cmp(totalReqMemory) >= 0
-	}
-
-	return false
+	predictorMemoryLimit := container.Resources.Limits.Memory()
+	return predictorMemoryLimit.Cmp(totalReqMemory) >= 0
 }
 
 /*
@@ -125,7 +120,7 @@ func MergeRuntimeContainers(runtimeContainer *v1alpha1.Container, predictorConta
 
 // MergePodSpec Merge the predictor PodSpec struct with the runtime PodSpec struct, allowing users
 // to override runtime PodSpec settings from the predictor spec.
-func MergePodSpec(runtimePodSpec *v1alpha1.ServingRuntimePodSpec, predictorPodSpec *v1beta1.PodSpec) (*v1.PodSpec, error) {
+func MergePodSpec(runtimePodSpec *v1alpha1.ServingRuntimePodSpec, predictorPodSpec *v1beta1api.PodSpec) (*v1.PodSpec, error) {
 
 	corePodSpec := v1.PodSpec{
 		NodeSelector: runtimePodSpec.NodeSelector,
@@ -149,12 +144,12 @@ func MergePodSpec(runtimePodSpec *v1alpha1.ServingRuntimePodSpec, predictorPodSp
 
 // GetServingRuntime Get a ServingRuntime by name. First, ServingRuntimes in the given namespace will be checked.
 // If a resource of the specified name is not found, then ClusterServingRuntimes will be checked.
-func GetServingRuntime(cl client.Client, name string, namespace string) (*v1alpha1.ServingRuntimeSpec, error) {
+func GetServingRuntime(cl client.Client, name string, namespace string) (*v1beta1api.SupportedRuntime, error) {
 
 	runtime := &v1alpha1.ServingRuntime{}
 	err := cl.Get(context.TODO(), client.ObjectKey{Name: name, Namespace: namespace}, runtime)
 	if err == nil {
-		return &runtime.Spec, nil
+		return &v1beta1api.SupportedRuntime{Name: runtime.GetObjectMeta().GetName(), RuntimeSpec: runtime.Spec}, nil
 	} else if !errors.IsNotFound(err) {
 		return nil, err
 	}
@@ -162,7 +157,7 @@ func GetServingRuntime(cl client.Client, name string, namespace string) (*v1alph
 	clusterRuntime := &v1alpha1.ClusterServingRuntime{}
 	err = cl.Get(context.TODO(), client.ObjectKey{Name: name}, clusterRuntime)
 	if err == nil {
-		return &clusterRuntime.Spec, nil
+		return &v1beta1api.SupportedRuntime{Name: clusterRuntime.GetObjectMeta().GetName(), RuntimeSpec: clusterRuntime.Spec}, nil
 	} else if !errors.IsNotFound(err) {
 		return nil, err
 	}
@@ -185,7 +180,7 @@ func ReplacePlaceholders(container *v1.Container, meta metav1.ObjectMeta) error 
 }
 
 // UpdateImageTag Update image tag if GPU is enabled or runtime version is provided
-func UpdateImageTag(container *v1.Container, runtimeVersion *string, isvcConfig *v1beta1.InferenceServicesConfig) {
+func UpdateImageTag(container *v1.Container, runtimeVersion *string, isvcConfig *v1beta1api.InferenceServicesConfig) {
 	image := container.Image
 	if runtimeVersion != nil && len(strings.Split(image, ":")) > 0 {
 		container.Image = strings.Split(image, ":")[0] + ":" + *runtimeVersion

@@ -39,7 +39,6 @@ type TritonSpec struct {
 
 var (
 	_ ComponentImplementation = &TritonSpec{}
-	_ PredictorImplementation = &TritonSpec{}
 )
 
 // Validate returns an error if invalid
@@ -90,13 +89,4 @@ func (t *TritonSpec) GetStorageUri() *string {
 
 func (t *TritonSpec) GetProtocol() constants.InferenceServiceProtocol {
 	return constants.ProtocolV2
-}
-
-func (t *TritonSpec) IsMMS(config *InferenceServicesConfig) bool {
-	return config.Predictors.Triton.MultiModelServer
-}
-
-func (t *TritonSpec) IsFrameworkSupported(framework string, config *InferenceServicesConfig) bool {
-	supportedFrameworks := config.Predictors.Triton.SupportedFrameworks
-	return isFrameworkIncluded(supportedFrameworks, framework)
 }

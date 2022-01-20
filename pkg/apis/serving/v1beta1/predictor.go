@@ -17,17 +17,9 @@ limitations under the License.
 package v1beta1
 
 import (
-	"reflect"
-
 	"github.com/kserve/kserve/pkg/constants"
 	v1 "k8s.io/api/core/v1"
 )
-
-// PredictorImplementation defines common functions for all predictors e.g Tensorflow, Triton, etc
-// +kubebuilder:object:generate=false
-type PredictorImplementation interface {
-	IsFrameworkSupported(framework string, config *InferenceServicesConfig) bool
-}
 
 // PredictorSpec defines the configuration for a predictor,
 // The following fields follow a "1-of" semantic. Users must specify exactly one spec.
@@ -113,50 +105,4 @@ func (s *PredictorSpec) GetImplementation() ComponentImplementation {
 // GetExtensions returns the extensions for the component
 func (s *PredictorSpec) GetExtensions() *ComponentExtensionSpec {
 	return &s.ComponentExtensionSpec
-}
-
-// GetPredictor returns the implementation for the predictor
-func (s *PredictorSpec) GetPredictorImplementations() []PredictorImplementation {
-	implementations := NonNilPredictors([]PredictorImplementation{
-		s.XGBoost,
-		s.PyTorch,
-		s.Triton,
-		s.SKLearn,
-		s.Tensorflow,
-		s.ONNX,
-		s.PMML,
-		s.LightGBM,
-		s.Paddle,
-	})
-	// This struct is not a pointer, so it will never be nil; include if containers are specified
-	if len(s.PodSpec.Containers) != 0 {
-		implementations = append(implementations, NewCustomPredictor(&s.PodSpec))
-	}
-	return implementations
-}
-
-func (s *PredictorSpec) GetPredictorImplementation() *PredictorImplementation {
-	predictors := s.GetPredictorImplementations()
-	if len(predictors) == 0 {
-		return nil
-	}
-	return &s.GetPredictorImplementations()[0]
-}
-
-func NonNilPredictors(objects []PredictorImplementation) (results []PredictorImplementation) {
-	for _, object := range objects {
-		if !reflect.ValueOf(object).IsNil() {
-			results = append(results, object)
-		}
-	}
-	return results
-}
-
-func isFrameworkIncluded(supportedFrameworks []string, framework string) bool {
-	for _, supportedFramework := range supportedFrameworks {
-		if supportedFramework == framework {
-			return true
-		}
-	}
-	return false
 }

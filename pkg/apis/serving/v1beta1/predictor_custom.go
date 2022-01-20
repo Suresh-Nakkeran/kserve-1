@@ -33,7 +33,6 @@ type CustomPredictor struct {
 
 var (
 	_ ComponentImplementation = &CustomPredictor{}
-	_ PredictorImplementation = &CustomPredictor{}
 )
 
 func NewCustomPredictor(podSpec *PodSpec) *CustomPredictor {
