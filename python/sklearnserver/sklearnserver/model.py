@@ -13,22 +13,23 @@
 # limitations under the License.
 import os
 
-import kserve
+import kserve_v2
 import joblib
 import pathlib
 from typing import Dict
-from kserve.model import ModelMissingError, InferenceError
+from kserve_v2.model import ModelMissingError, InferenceError
 
 MODEL_EXTENSIONS = (".joblib", ".pkl", ".pickle")
 ENV_PREDICT_PROBA = "PREDICT_PROBA"
 
 
-class SKLearnModel(kserve.Model):  # pylint:disable=c-extension-no-member
-    def __init__(self, name: str, model_dir: str):
-        super().__init__(name)
+class SKLearnModel(kserve_v2.Model):  # pylint:disable=c-extension-no-member
+    def __init__(self, name: str, model_dir: str, version: str = None):
+        super().__init__(name, version)
         self.name = name
         self.model_dir = model_dir
         self.ready = False
+        self.version = version
 
     def load(self) -> bool:
         model_path = pathlib.Path(kserve.Storage.download(self.model_dir))
@@ -47,6 +48,8 @@ class SKLearnModel(kserve.Model):  # pylint:disable=c-extension-no-member
         return self.ready
 
     def predict(self, request: Dict) -> Dict:
+        # return {"predictions": result}
+        # NOTE: tesing grpc ModelInferResponse schema structure
         instances = request["instances"]
         try:
             if os.environ.get(ENV_PREDICT_PROBA, "false").lower() == "true" and \
@@ -54,6 +57,16 @@ class SKLearnModel(kserve.Model):  # pylint:disable=c-extension-no-member
                 result = self._model.predict_proba(instances).tolist()
             else:
                 result = self._model.predict(instances).tolist()
-            return {"predictions": result}
+            return {
+                "id": "823248cc-d770-4a51-9606-16803395569c",
+                "model_name": self.name,
+                "model_version": self.version,
+                "output": {
+                    "data": result,
+                    "datatype": "INT64",
+                    "name": "predict",
+                    "shape": [2]
+                }
+            }
         except Exception as e:
             raise InferenceError(str(e))
