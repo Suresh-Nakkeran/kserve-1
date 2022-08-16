@@ -1653,4 +1653,179 @@ var _ = Describe("v1beta1 inference service controller", func() {
 		})
 	})
 
+	Context("When creating inference service with predictor and without top level istio virtual service", func() {
+		It("Should have knative service created", func() {
+			By("By creating a new InferenceService")
+			// Create configmap
+			var configMap = &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      constants.InferenceServiceConfigMapName,
+					Namespace: constants.KServeNamespace,
+				},
+				Data: map[string]string{
+					"predictors": `{
+						"tensorflow": {
+							"image": "tensorflow/serving",
+							"defaultTimeout": "60",
+							"multiModelServer": false
+					   },
+					   "sklearn": {
+							"v1": {
+								"image": "kfserving/sklearnserver",
+								"multiModelServer": true
+							},
+							"v2": {
+								"image": "kfserving/sklearnserver",
+								"multiModelServer": true
+							}
+					   },
+					   "xgboost": {
+							"image": "kfserving/xgbserver",
+							"multiModelServer": true
+					   }
+					 }`,
+					"explainers": `{
+						"alibi": {
+							"image": "kfserving/alibi-explainer",
+							"defaultImageVersion": "latest"
+						}
+					}`,
+					"ingress": `{
+						"disableIstioVirtualHost": true,
+						"ingressGateway": "knative-serving/knative-ingress-gateway",
+						"ingressService": "test-destination",
+						"localGateway": "knative-serving/knative-local-gateway",
+						"localGatewayService": "knative-local-gateway.istio-system.svc.cluster.local"
+					}`,
+				},
+			}
+			Expect(k8sClient.Create(context.TODO(), configMap)).NotTo(HaveOccurred())
+			defer k8sClient.Delete(context.TODO(), configMap)
+			serviceName := "foo-disable-istio"
+			var expectedRequest = reconcile.Request{NamespacedName: types.NamespacedName{Name: serviceName, Namespace: "default"}}
+			var serviceKey = expectedRequest.NamespacedName
+			var storageUri = "s3://test/mnist/export"
+			ctx := context.Background()
+			isvc := &v1beta1.InferenceService{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      serviceKey.Name,
+					Namespace: serviceKey.Namespace,
+				},
+				Spec: v1beta1.InferenceServiceSpec{
+					Predictor: v1beta1.PredictorSpec{
+						ComponentExtensionSpec: v1beta1.ComponentExtensionSpec{
+							MinReplicas: v1beta1.GetIntReference(1),
+							MaxReplicas: 3,
+						},
+						Tensorflow: &v1beta1.TFServingSpec{
+							PredictorExtensionSpec: v1beta1.PredictorExtensionSpec{
+								StorageURI:     &storageUri,
+								RuntimeVersion: proto.String("1.14.0"),
+								Container: v1.Container{
+									Name:      "kfs",
+									Resources: defaultResource,
+								},
+							},
+						},
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, isvc)).Should(Succeed())
+			defer k8sClient.Delete(ctx, isvc)
+			inferenceService := &v1beta1.InferenceService{}
+
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, serviceKey, inferenceService)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+
+			actualService := &knservingv1.Service{}
+			predictorServiceKey := types.NamespacedName{Name: constants.DefaultPredictorServiceName(serviceKey.Name),
+				Namespace: serviceKey.Namespace}
+			Eventually(func() error { return k8sClient.Get(context.TODO(), predictorServiceKey, actualService) }, timeout).
+				Should(Succeed())
+
+			expectedService := &knservingv1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      predictorServiceKey.Name,
+					Namespace: predictorServiceKey.Namespace,
+				},
+				Spec: knservingv1.ServiceSpec{
+					ConfigurationSpec: knservingv1.ConfigurationSpec{
+						Template: knservingv1.RevisionTemplateSpec{
+							ObjectMeta: metav1.ObjectMeta{
+								Labels: map[string]string{
+									constants.KServiceComponentLabel:      constants.Predictor.String(),
+									constants.InferenceServicePodLabelKey: serviceName,
+								},
+								Annotations: map[string]string{
+									constants.StorageInitializerSourceUriInternalAnnotationKey: *isvc.Spec.Predictor.Tensorflow.StorageURI,
+									"autoscaling.knative.dev/maxScale":                         "3",
+									"autoscaling.knative.dev/minScale":                         "1",
+									"autoscaling.knative.dev/class":                            "kpa.autoscaling.knative.dev",
+								},
+							},
+							Spec: knservingv1.RevisionSpec{
+								ContainerConcurrency: isvc.Spec.Predictor.ContainerConcurrency,
+								TimeoutSeconds:       isvc.Spec.Predictor.TimeoutSeconds,
+								PodSpec: v1.PodSpec{
+									Containers: []v1.Container{
+										{
+											Image: "tensorflow/serving:" +
+												*isvc.Spec.Predictor.Tensorflow.RuntimeVersion,
+											Name:    constants.InferenceServiceContainerName,
+											Command: []string{v1beta1.TensorflowEntrypointCommand},
+											Args: []string{
+												"--port=" + v1beta1.TensorflowServingGRPCPort,
+												"--rest_api_port=" + v1beta1.TensorflowServingRestPort,
+												"--model_name=" + isvc.Name,
+												"--model_base_path=" + constants.DefaultModelLocalMountPath,
+												"--rest_api_timeout_in_ms=60000",
+											},
+											Resources: defaultResource,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			expectedService.SetDefaults(context.TODO())
+			Expect(kmp.SafeDiff(actualService.Spec, expectedService.Spec)).To(Equal(""))
+			predictorUrl, _ := apis.ParseURL("http://" + constants.InferenceServiceHostName(constants.DefaultPredictorServiceName(serviceKey.Name), serviceKey.Namespace, domain))
+			// update predictor
+			{
+				updatedService := actualService.DeepCopy()
+				updatedService.Status.LatestCreatedRevisionName = "revision-v1"
+				updatedService.Status.LatestReadyRevisionName = "revision-v1"
+				updatedService.Status.URL = predictorUrl
+				updatedService.Status.Conditions = duckv1.Conditions{
+					{
+						Type:   knservingv1.ServiceConditionReady,
+						Status: "True",
+					},
+				}
+				Expect(k8sClient.Status().Update(context.TODO(), updatedService)).NotTo(gomega.HaveOccurred())
+			}
+			//get inference service
+			time.Sleep(10 * time.Second)
+			actualIsvc := &v1beta1.InferenceService{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, expectedRequest.NamespacedName, actualIsvc)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(actualIsvc.Status.URL).To(gomega.Equal(&apis.URL{
+				Scheme: "http",
+				Host:   constants.InferenceServiceHostName(constants.DefaultPredictorServiceName(serviceKey.Name), serviceKey.Namespace, domain),
+			}))
+		})
+	})
 })
