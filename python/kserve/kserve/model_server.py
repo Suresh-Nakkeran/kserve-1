@@ -235,8 +235,12 @@ class ModelServer:
                 },
             }
         )
-
-        self._server = uvicorn.Server(cfg)
+        server = uvicorn.Server(cfg)
+        if cfg.workers > 1:
+            sock = cfg.bind_socket()
+            self._server = uvicorn.supervisors.Multiprocess(cfg, target=server.run, sockets=[sock])
+        else:
+            self._server = server
         if self.max_asyncio_workers is None:
             # formula as suggest in https://bugs.python.org/issue35279
             self.max_asyncio_workers = min(32, utils.cpu_count()+4)
