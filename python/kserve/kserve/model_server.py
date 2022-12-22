@@ -17,10 +17,10 @@ import asyncio
 import concurrent.futures
 import logging
 from distutils.util import strtobool
-from typing import List, Dict, Union
+from typing import List, Dict, Optional, Union
 
 import pkg_resources
-import uvicorn
+from gunicorn.app.base import BaseApplication
 from fastapi import FastAPI, Request, Response
 from fastapi.routing import APIRoute as FastAPIRoute
 from fastapi.responses import ORJSONResponse
@@ -72,6 +72,28 @@ async def metrics_handler(request: Request) -> Response:
     return Response(content=encoder(REGISTRY), headers={"content-type": content_type})
 
 
+class GunicornCustomApplication(BaseApplication):
+    """Gunicorn Custom application
+
+    Args:
+        app (object): Application instance.
+        options (dict): Gunicorn CLI arguments.
+    """
+    
+    def __init__(self, app, options=None):
+        self.options = options or {}
+        self.application = app
+        super().__init__()
+
+    def load_config(self):
+        config = {key: value for key, value in self.options.items()
+                  if key in self.cfg.settings and value is not None}
+        for key, value in config.items():
+            self.cfg.set(key.lower(), value)
+
+    def load(self):
+        return self.application
+
 class ModelServer:
     """KServe ModelServer
 
@@ -111,64 +133,6 @@ class ModelServer:
             model_registry=self.registered_models)
         self._grpc_server = GRPCServer(grpc_port, self.dataplane, self.model_repository_extension)
 
-    def create_application(self) -> FastAPI:
-        """Create a KServe ModelServer application with API routes.
-
-        Returns:
-            FastAPI: An application instance.
-        """
-        v1_endpoints = V1Endpoints(self.dataplane, self.model_repository_extension)
-        v2_endpoints = V2Endpoints(self.dataplane, self.model_repository_extension)
-
-        return FastAPI(
-            title="KServe ModelServer",
-            version=pkg_resources.get_distribution("kserve").version,
-            docs_url="/docs" if self.enable_docs_url else None,
-            redoc_url=None,
-            default_response_class=ORJSONResponse,
-            routes=[
-                # Server Liveness API returns 200 if server is alive.
-                FastAPIRoute(r"/", self.dataplane.live),
-                # Metrics
-                FastAPIRoute(r"/metrics", metrics_handler, methods=["GET"]),
-                # V1 Inference Protocol
-                FastAPIRoute(r"/v1/models", v1_endpoints.models, tags=["V1"]),
-                # Model Health API returns 200 if model is ready to serve.
-                FastAPIRoute(r"/v1/models/{model_name}", v1_endpoints.model_ready, tags=["V1"]),
-                FastAPIRoute(r"/v1/models/{model_name}:predict",
-                             v1_endpoints.predict, methods=["POST"], tags=["V1"]),
-                FastAPIRoute(r"/v1/models/{model_name}:explain",
-                             v1_endpoints.explain, methods=["POST"], tags=["V1"]),
-                # V2 Inference Protocol
-                # https://github.com/kserve/kserve/tree/master/docs/predict-api/v2
-                FastAPIRoute(r"/v2", v2_endpoints.metadata,
-                             response_model=ServerMetadataResponse, tags=["V2"]),
-                FastAPIRoute(r"/v2/health/live", v2_endpoints.live,
-                             response_model=ServerLiveResponse, tags=["V2"]),
-                FastAPIRoute(r"/v2/health/ready", v2_endpoints.ready,
-                             response_model=ServerReadyResponse, tags=["V2"]),
-                FastAPIRoute(r"/v2/models/{model_name}",
-                             v2_endpoints.model_metadata, response_model=ModelMetadataResponse, tags=["V2"]),
-                FastAPIRoute(r"/v2/models/{model_name}/versions/{model_version}",
-                             v2_endpoints.model_metadata, tags=["V2"], include_in_schema=False),
-                FastAPIRoute(r"/v2/models/{model_name}/infer",
-                             v2_endpoints.infer, methods=["POST"], response_model=InferenceResponse, tags=["V2"]),
-                FastAPIRoute(r"/v2/models/{model_name}/versions/{model_version}/infer",
-                             v2_endpoints.infer, methods=["POST"], tags=["V2"], include_in_schema=False),
-                FastAPIRoute(r"/v2/repository/models/{model_name}/load",
-                             v2_endpoints.load, methods=["POST"], tags=["V2"]),
-                FastAPIRoute(r"/v2/repository/models/{model_name}/unload",
-                             v2_endpoints.unload, methods=["POST"], tags=["V2"]),
-            ], exception_handlers={
-                errors.InvalidInput: errors.invalid_input_handler,
-                errors.InferenceError: errors.inference_error_handler,
-                errors.ModelNotFound: errors.model_not_found_handler,
-                errors.ModelNotReady: errors.model_not_ready_handler,
-                NotImplementedError: errors.not_implemented_error_handler,
-                Exception: errors.exception_handler
-            }
-        )
-
     def start(self, models: Union[List[Model], Dict[str, Deployment]]) -> None:
         if isinstance(models, list):
             for model in models:
@@ -191,52 +155,6 @@ class ModelServer:
         else:
             raise RuntimeError("Unknown model collection types")
 
-        logging.info(f"starting uvicorn with {self.workers} workers")
-        # TODO: multiprocessing does not work programmatically
-        # https://www.uvicorn.org/deployment/#running-programmatically
-        cfg = uvicorn.Config(
-            self.create_application(),
-            host="0.0.0.0",
-            port=self.http_port,
-            workers=self.workers,
-            log_config={
-                "version": 1,
-                "formatters": {
-                    "default": {
-                        "()": "uvicorn.logging.DefaultFormatter",
-                        "datefmt": DATE_FORMAT,
-                        "fmt": "%(asctime)s.%(msecs)03d %(name)s %(levelprefix)s %(message)s",
-                        "use_colors": None,
-                    },
-                    "access": {
-                        "()": "uvicorn.logging.AccessFormatter",
-                        "datefmt": DATE_FORMAT,
-                        "fmt": '%(asctime)s.%(msecs)03d %(name)s %(levelprefix)s %(client_addr)s - '
-                               '"%(request_line)s" %(status_code)s',
-                        # noqa: E501
-                    },
-                },
-                "handlers": {
-                    "default": {
-                        "formatter": "default",
-                        "class": "logging.StreamHandler",
-                        "stream": "ext://sys.stderr",
-                    },
-                    "access": {
-                        "formatter": "access",
-                        "class": "logging.StreamHandler",
-                        "stream": "ext://sys.stdout",
-                    },
-                },
-                "loggers": {
-                    "uvicorn": {"handlers": ["default"], "level": "INFO"},
-                    "uvicorn.error": {"level": "INFO"},
-                    "uvicorn.access": {"handlers": ["access"], "level": "INFO", "propagate": False},
-                },
-            }
-        )
-
-        self._server = uvicorn.Server(cfg)
         if self.max_asyncio_workers is None:
             # formula as suggest in https://bugs.python.org/issue35279
             self.max_asyncio_workers = min(32, utils.cpu_count()+4)
@@ -245,9 +163,14 @@ class ModelServer:
             concurrent.futures.ThreadPoolExecutor(max_workers=self.max_asyncio_workers))
 
         async def servers_task():
-            servers = [self._server.serve()]
+            logging.info(f"is grpc enabled : {self.enable_grpc}")
+            servers = []
             if self.enable_grpc:
                 servers.append(self._grpc_server.start(self.max_threads))
+
+            gunicorn_server_obj = gunicorn_server(self.workers, self.dataplane, self.model_repository_extension, self.enable_docs_url)
+            servers.append(gunicorn_server_obj)
+            logging.info(f"No of server used: {len(servers)}")
             await asyncio.gather(*servers)
         asyncio.run(servers_task())
 
@@ -261,3 +184,76 @@ class ModelServer:
                 "Failed to register model, model.name must be provided.")
         self.registered_models.update(model)
         logging.info("Registering model: %s", model.name)
+
+
+
+async def gunicorn_server(workers, dataplane, model_repository_extension, enable_docs_url):
+    """Gunicorn custom application for running fast api app.
+    
+    """
+    logging.info(f"starting gunicorn with {workers} workers")
+    options = {
+            'bind': '%s:%s' % ('127.0.0.1', '8080'),
+            'workers': workers,
+            'worker_class': 'uvicorn.workers.UvicornWorker' # guincorn worker process class for fast api
+        }
+    logging.info(f"CLI arguments for start application with gunicorn: {options}")
+    GunicornCustomApplication(create_fast_api_application(dataplane, model_repository_extension, enable_docs_url), options).run()
+    
+def create_fast_api_application(dataplane, model_repository_extension, enable_docs_url):
+    """Create a KServe ModelServer application with API routes.
+
+    Returns:
+        FastAPI: An application instance.
+    """
+    v1_endpoints = V1Endpoints(dataplane, model_repository_extension)
+    v2_endpoints = V2Endpoints(dataplane, model_repository_extension)
+
+    return FastAPI(
+        title="KServe ModelServer",
+        version=pkg_resources.get_distribution("kserve").version,
+        docs_url="/docs" if enable_docs_url else None,
+        redoc_url=None,
+        default_response_class=ORJSONResponse,
+        routes=[
+            # Server Liveness API returns 200 if server is alive.
+            FastAPIRoute(r"/", dataplane.live),
+            # Metrics
+            FastAPIRoute(r"/metrics", metrics_handler, methods=["GET"]),
+            # V1 Inference Protocol
+            FastAPIRoute(r"/v1/models", v1_endpoints.models, tags=["V1"]),
+            # Model Health API returns 200 if model is ready to serve.
+            FastAPIRoute(r"/v1/models/{model_name}", v1_endpoints.model_ready, tags=["V1"]),
+            FastAPIRoute(r"/v1/models/{model_name}:predict",
+                            v1_endpoints.predict, methods=["POST"], tags=["V1"]),
+            FastAPIRoute(r"/v1/models/{model_name}:explain",
+                            v1_endpoints.explain, methods=["POST"], tags=["V1"]),
+            # V2 Inference Protocol
+            # https://github.com/kserve/kserve/tree/master/docs/predict-api/v2
+            FastAPIRoute(r"/v2", v2_endpoints.metadata,
+                            response_model=ServerMetadataResponse, tags=["V2"]),
+            FastAPIRoute(r"/v2/health/live", v2_endpoints.live,
+                            response_model=ServerLiveResponse, tags=["V2"]),
+            FastAPIRoute(r"/v2/health/ready", v2_endpoints.ready,
+                            response_model=ServerReadyResponse, tags=["V2"]),
+            FastAPIRoute(r"/v2/models/{model_name}",
+                            v2_endpoints.model_metadata, response_model=ModelMetadataResponse, tags=["V2"]),
+            FastAPIRoute(r"/v2/models/{model_name}/versions/{model_version}",
+                            v2_endpoints.model_metadata, tags=["V2"], include_in_schema=False),
+            FastAPIRoute(r"/v2/models/{model_name}/infer",
+                            v2_endpoints.infer, methods=["POST"], response_model=InferenceResponse, tags=["V2"]),
+            FastAPIRoute(r"/v2/models/{model_name}/versions/{model_version}/infer",
+                            v2_endpoints.infer, methods=["POST"], tags=["V2"], include_in_schema=False),
+            FastAPIRoute(r"/v2/repository/models/{model_name}/load",
+                            v2_endpoints.load, methods=["POST"], tags=["V2"]),
+            FastAPIRoute(r"/v2/repository/models/{model_name}/unload",
+                            v2_endpoints.unload, methods=["POST"], tags=["V2"]),
+        ], exception_handlers={
+            errors.InvalidInput: errors.invalid_input_handler,
+            errors.InferenceError: errors.inference_error_handler,
+            errors.ModelNotFound: errors.model_not_found_handler,
+            errors.ModelNotReady: errors.model_not_ready_handler,
+            NotImplementedError: errors.not_implemented_error_handler,
+            Exception: errors.exception_handler
+        }
+    )
