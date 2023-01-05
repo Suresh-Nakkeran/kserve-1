@@ -33,3 +33,29 @@ def test_model():
 
     assert isinstance(response["predictions"][0], dict)
     assert response["predictions"][0] == expect_result
+
+
+def test_model_v2():
+    server = PmmlModel("model", model_dir)
+    server.load()
+
+    request = {
+        "inputs": [
+            {
+                "name": "input-0",
+                "shape": [2, 4],
+                "datatype": "FP32",
+                "data": [[5.1, 3.5, 1.4, 0.2]]
+            }
+        ]
+    }
+
+    response = server.predict(request)
+    expect_result = {'Species': 'setosa',
+                     'Probability_setosa': 1.0,
+                     'Probability_versicolor': 0.0,
+                     'Probability_virginica': 0.0,
+                     'Node_Id': '2'}
+
+    assert isinstance(response["outputs"][0]["data"][0], dict)
+    assert response["outputs"][0]["data"][0] == expect_result
