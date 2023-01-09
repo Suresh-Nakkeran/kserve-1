@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 
 from kserve import KServeClient
@@ -92,4 +93,60 @@ def test_pmml_runtime_kserve():
                                     'Probability_versicolor': 0.0,
                                     'Probability_virginica': 0.0,
                                     'Node_Id': '2'}])
+    kserve_client.delete(service_name, KSERVE_TEST_NAMESPACE)
+
+
+@pytest.mark.pmml
+def test_pmml_v2_kserve():
+    service_name = 'isvc-pmml-v2'
+    protocol_version="v2"
+    infer_output = {
+        "model_name": service_name,
+        "model_version": None,
+        "id": "",
+        "parameters": None,
+        "outputs": [
+            {
+                "name": "output-0",
+                "shape": [
+                    2,
+                    4
+                ],
+                "datatype":"FP32",
+                "parameters":None,
+                "data":[
+                    {
+                        "Species": "setosa",
+                        "Probability_setosa": 1.0,
+                        "Probability_versicolor": 0.0,
+                        "Probability_virginica": 0.0,
+                        "Node_Id": "2"
+                    }
+                ]
+            }
+        ]
+    }
+    predictor = V1beta1PredictorSpec(
+        min_replicas=1,
+        pmml=V1beta1PMMLSpec(
+            storage_uri='gs://kfserving-examples/models/pmml',
+            resources=V1ResourceRequirements(
+                requests={'cpu': '10m', 'memory': '128Mi'},
+                limits={'cpu': '100m', 'memory': '256Mi'}
+            )
+        )
+    )
+
+    isvc = V1beta1InferenceService(api_version=constants.KSERVE_V1BETA1,
+                                   kind=constants.KSERVE_KIND,
+                                   metadata=client.V1ObjectMeta(
+                                        name=service_name, namespace=KSERVE_TEST_NAMESPACE),
+                                   spec=V1beta1InferenceServiceSpec(predictor=predictor))
+
+    kserve_client = KServeClient(config_file=os.environ.get("KUBECONFIG", "~/.kube/config"))
+    kserve_client.create(isvc)
+    kserve_client.wait_isvc_ready(service_name, namespace=KSERVE_TEST_NAMESPACE)
+    res = predict(service_name, './data/pmml-input-v2.json', protocol_version)
+    infer_output["id"] = res["id"]
+    assert (res == infer_output)
     kserve_client.delete(service_name, KSERVE_TEST_NAMESPACE)
