@@ -16,8 +16,11 @@ import os
 import kserve
 import joblib
 import pathlib
-from typing import Dict
+from typing import Dict, Union
 from kserve.errors import InferenceError, ModelMissingError
+
+from kserve.protocol.infer_type import InferRequest, InferResponse
+from kserve.utils.utils import get_predict_input, get_predict_response
 
 MODEL_EXTENSIONS = (".joblib", ".pkl", ".pickle")
 ENV_PREDICT_PROBA = "PREDICT_PROBA"
@@ -46,14 +49,14 @@ class SKLearnModel(kserve.Model):  # pylint:disable=c-extension-no-member
         self.ready = True
         return self.ready
 
-    def predict(self, payload: Dict, headers: Dict[str, str] = None) -> Dict:
-        instances = payload["instances"]
+    def predict(self, payload: Union[Dict, InferRequest], headers: Dict[str, str] = None) -> Union[Dict, InferResponse]:
         try:
+            instances = get_predict_input(payload)
             if os.environ.get(ENV_PREDICT_PROBA, "false").lower() == "true" and \
                     hasattr(self._model, "predict_proba"):
                 result = self._model.predict_proba(instances).tolist()
             else:
                 result = self._model.predict(instances).tolist()
-            return {"predictions": result}
+            return get_predict_response(payload, result, self.name)
         except Exception as e:
             raise InferenceError(str(e))
