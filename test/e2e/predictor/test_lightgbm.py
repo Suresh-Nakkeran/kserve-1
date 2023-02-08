@@ -19,14 +19,12 @@ from kubernetes import client
 from kubernetes.client import V1ContainerPort, V1ResourceRequirements
 
 from kserve import (KServeClient, V1beta1InferenceService,
-                    V1beta1InferenceServiceSpec, V1beta1LightGBMSpec,
-                    V1beta1ModelFormat, V1beta1ModelSpec, V1beta1PredictorSpec,
-                    constants)
+                    V1beta1InferenceServiceSpec, V1beta1ModelFormat,
+                    V1beta1ModelSpec, V1beta1PredictorSpec,V1beta1LightGBMSpec, constants)
 
 from ..common.utils import KSERVE_TEST_NAMESPACE, predict, predict_grpc
 
 
-# NOTE: Below line commented due to this branch changes is not supported list of dict model inputs
 @pytest.mark.fast
 def test_lightgbm_kserve():
     service_name = "isvc-lightgbm"
