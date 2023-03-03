@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 
 from fastapi.requests import Request
 from fastapi.responses import Response
@@ -158,3 +158,11 @@ class V2Endpoints:
         """
         await self.model_repository_extension.unload(model_name)
         return {"name": model_name, "unload": True}
+
+    async def models(self) -> Dict[str, List[str]]:
+        """Get a list of models of the model registry.
+
+        Returns:
+            Dict[str, List[str]]: List of model names.
+        """
+        return {"models": list(self.dataplane.model_registry.get_models().keys())}

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, Union, Tuple, Optional
+from typing import Dict, Union, Tuple, Optional, List
 
 import cloudevents.exceptions as ce
 import orjson
@@ -309,3 +309,11 @@ class DataPlane:
             response = await model_handle.remote(body, model_type=ModelType.EXPLAINER)
         response, response_headers = self.encode(model_name, body, response, headers)
         return response, response_headers
+
+    def models(self) -> List[str]:
+        """Get a list of models from the model registry.
+
+        Returns:
+            List[str]: List of model names.
+        """
+        return list(self._model_registry.get_models().keys())

@@ -48,6 +48,10 @@ service GRPCInferenceService
 
   // Unload a model.
   rpc RepositoryModelUnload(RepositoryModelUnloadRequest) returns (RepositoryModelUnloadResponse) {}
+
+  // This API indicates to get a list of model's names
+  rpc Models(ModelListRequest) returns (ModelListResponse) {}
+
 }
 
 message ServerLiveRequest {}
@@ -64,6 +68,15 @@ message ServerReadyResponse
 {
   // True if the inference server is ready, false if not ready.
   bool ready = 1;
+}
+
+message ModelListRequest {}
+
+message ModelListResponse 
+{
+
+  // The name of the models
+  repeated string models = 1;
 }
 
 message ModelReadyRequest

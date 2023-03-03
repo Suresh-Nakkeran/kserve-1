@@ -69,6 +69,11 @@ class GRPCInferenceServiceStub(object):
                 request_serializer=grpc__predict__v2__pb2.RepositoryModelUnloadRequest.SerializeToString,
                 response_deserializer=grpc__predict__v2__pb2.RepositoryModelUnloadResponse.FromString,
                 )
+        self.Models = channel.unary_unary(
+                '/inference.GRPCInferenceService/Models',
+                request_serializer=grpc__predict__v2__pb2.ModelListRequest.SerializeToString,
+                response_deserializer=grpc__predict__v2__pb2.ModelListResponse.FromString,
+                )
 
 
 class GRPCInferenceServiceServicer(object):
@@ -138,6 +143,13 @@ class GRPCInferenceServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Models(self, request, context):
+        """This API indicates to get a list of model's names
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_GRPCInferenceServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -180,6 +192,11 @@ def add_GRPCInferenceServiceServicer_to_server(servicer, server):
                     servicer.RepositoryModelUnload,
                     request_deserializer=grpc__predict__v2__pb2.RepositoryModelUnloadRequest.FromString,
                     response_serializer=grpc__predict__v2__pb2.RepositoryModelUnloadResponse.SerializeToString,
+            ),
+            'Models': grpc.unary_unary_rpc_method_handler(
+                    servicer.Models,
+                    request_deserializer=grpc__predict__v2__pb2.ModelListRequest.FromString,
+                    response_serializer=grpc__predict__v2__pb2.ModelListResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -325,5 +342,22 @@ class GRPCInferenceService(object):
         return grpc.experimental.unary_unary(request, target, '/inference.GRPCInferenceService/RepositoryModelUnload',
             grpc__predict__v2__pb2.RepositoryModelUnloadRequest.SerializeToString,
             grpc__predict__v2__pb2.RepositoryModelUnloadResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Models(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/inference.GRPCInferenceService/Models',
+            grpc__predict__v2__pb2.ModelListRequest.SerializeToString,
+            grpc__predict__v2__pb2.ModelListResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

@@ -98,3 +98,9 @@ class InferenceServicer(grpc_predict_v2_pb2_grpc.GRPCInferenceServiceServicer):
         return pb.ModelInferResponse(id=response_body["id"],
                                      model_name=response_body["model_name"],
                                      outputs=response_body["outputs"])
+    
+    async def Models(
+        self, request: pb.ModelListRequest, context: ServicerContext
+    ) -> pb.ModelListResponse:
+        
+        return pb.ModelListResponse(models = self._data_plane.models())
