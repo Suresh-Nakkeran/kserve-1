@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
+import json
 import sys
 import uuid
 from typing import Dict, Union
@@ -141,8 +143,9 @@ def get_predict_input(payload: Union[Dict, InferRequest]):
         return payload["inputs"] if "inputs" in payload else payload["instances"]
     elif isinstance(payload, InferRequest):
         input = payload.inputs[0]
-        if input.datatype == "MIXED":
-            return input.data
+        if input.name == "mixed" and input.datatype == "BYTES":
+            mixed_input = [json.loads(byte_input) for byte_input in input.data]
+            return mixed_input
         else:
             return input.as_numpy()
 
