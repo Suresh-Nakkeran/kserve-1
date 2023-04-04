@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from typing import Optional, List, Dict
 
 import numpy
@@ -562,7 +563,8 @@ class InferResponse:
                 infer_output_dict["contents"] = {}
                 data_key = GRPC_CONTENT_DATATYPE_MAPPINGS.get(infer_output.datatype, None)
                 if data_key is not None:
-                    infer_output_dict["contents"][data_key] = infer_output.data
+                    infer_output_dict["contents"][data_key] = [bytes(
+                        output, 'utf-8') if isinstance(output, str) else output for output in infer_output.data]
                 else:
                     raise InvalidInput("to_grpc: invalid output datatype")
             infer_outputs.append(infer_output_dict)
